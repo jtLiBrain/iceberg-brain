@@ -56,7 +56,7 @@ public class KafkaToIceberg {
 
         FlinkSink.forRowData(output)
                 .tableLoader(tableLoader)
-                .build();
+                .append();
 
         env.execute("Kafka to Iceberg");
     }

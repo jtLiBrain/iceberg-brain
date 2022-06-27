@@ -8,18 +8,12 @@ import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsIni
 import org.apache.flink.streaming.api.CheckpointingMode
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.table.api.TableSchema
-import org.apache.flink.table.data.StringData
-import org.apache.flink.table.types.logical.{BigIntType, VarCharType}
-import org.apache.flink.table.types.AtomicDataType
+import org.apache.flink.table.api.{DataTypes, TableSchema}
 import org.apache.flink.types.Row
 import org.apache.hadoop.conf.Configuration
 import org.apache.iceberg.flink.TableLoader
 import org.apache.iceberg.flink.sink.FlinkSink
 
-/**
- * 不能插入Iceberg
- */
 object KafkaToIcebergScala {
   def main(args: Array[String]): Unit = {
     val env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI()
@@ -43,11 +37,7 @@ object KafkaToIcebergScala {
         val ts = jo.getLong("ts")
         val pn = jo.getString("pn")
 
-        Row.of(
-          StringData.fromString(user),
-          StringData.fromString(page),
-          ts,
-          StringData.fromString(pn))
+        Row.of(user, page, ts, pn)
     })
 
     val tableLoader = TableLoader.fromHadoopTable(
@@ -56,15 +46,15 @@ object KafkaToIcebergScala {
     )
 
     val tableSchema = TableSchema.builder()
-      .field("user_name", new AtomicDataType(new VarCharType()))
-      .field("page", new AtomicDataType(new VarCharType()))
-      .field("ts", new AtomicDataType(new BigIntType()))
-      .field("pn", new AtomicDataType(new VarCharType()))
+      .field("user_name", DataTypes.STRING())
+      .field("page", DataTypes.STRING())
+      .field("ts", DataTypes.BIGINT())
+      .field("pn", DataTypes.STRING())
       .build()
 
     FlinkSink.forRow(output.javaStream, tableSchema)
       .tableLoader(tableLoader)
-      .build
+      .append()
 
     env.execute("Kafka to Iceberg")
   }
