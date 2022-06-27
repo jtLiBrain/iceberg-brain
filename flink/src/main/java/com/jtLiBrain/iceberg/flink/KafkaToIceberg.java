@@ -13,14 +13,9 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
-import org.apache.flink.table.data.TimestampData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.flink.sink.FlinkSink;
-
-import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 public class KafkaToIceberg {
     public static void main(String[] args) throws Exception {
@@ -31,7 +26,7 @@ public class KafkaToIceberg {
 
         KafkaSource<String> source = KafkaSource.<String>builder()
                 .setBootstrapServers("localhost:9092")
-                .setTopics("iceber-events")
+                .setTopics("user_behavior")
                 .setGroupId("my-group-1")
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new SimpleStringSchema())
@@ -42,22 +37,20 @@ public class KafkaToIceberg {
         DataStream<RowData> output = input.map(s -> {
             JSONObject jo = JSON.parseObject(s);
 
-            Timestamp ts = jo.getTimestamp("ts");
             String user = jo.getString("userName");
             String page = jo.getString("page");
-            Date date = jo.getDate("ts");
-
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            Long ts = jo.getLong("ts");
+            String pn = jo.getString("pn");
 
             return GenericRowData.of(
-                    TimestampData.fromTimestamp(ts),
                     StringData.fromString(user),
                     StringData.fromString(page),
-                    StringData.fromString(sdf.format(date)));
+                    ts,
+                    StringData.fromString(pn));
         });
 
         TableLoader tableLoader = TableLoader.fromHadoopTable(
-                    "file:///Users/dream/Env/iceberg/flink_warehouse/iceberg_db/user_visit",
+                    "file:///Users/dream/Env/iceberg/flink_warehouse/iceberg_db/user_behavior",
                     new Configuration()
                 );
 

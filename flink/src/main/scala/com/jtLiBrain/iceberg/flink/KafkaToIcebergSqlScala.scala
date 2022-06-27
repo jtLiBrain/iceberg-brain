@@ -16,13 +16,13 @@ object KafkaToIcebergSqlScala {
     tEnv.executeSql(
       """
         |CREATE TEMPORARY TABLE user_behavior_kafka (
-        |  `ts` BIGINT,
         |  `userName` STRING,
         |  `page` STRING,
+        |  `ts` BIGINT,
         |  `pn` STRING
         |) WITH (
         |  'connector' = 'kafka',
-        |  'topic' = 'iceber-events',
+        |  'topic' = 'user_behavior',
         |  'properties.bootstrap.servers' = 'localhost:9092',
         |  'properties.group.id' = 'testGroup',
         |  'scan.startup.mode' = 'latest-offset',
@@ -33,9 +33,9 @@ object KafkaToIcebergSqlScala {
     tEnv.executeSql(
       """
         |CREATE TEMPORARY TABLE user_behavior_iceberg (
-        |  `ts` TIMESTAMP(3),
         |  `user_name` STRING,
         |  `page` STRING,
+        |  `ts` BIGINT,
         |  `pn` STRING
         |) PARTITIONED BY (pn)
         |WITH (
@@ -43,15 +43,15 @@ object KafkaToIcebergSqlScala {
         |  'catalog-type' = 'hadoop',
         |  'catalog-name' = 'hadoop_catalog',
         |  'catalog-database' = 'iceberg_db',
-        |  'catalog-table' = 'user_visit',
+        |  'catalog-table' = 'user_behavior',
         |  'warehouse'='file:///Users/dream/Env/iceberg/flink_warehouse'
         |)
         |""".stripMargin)
 
     val ubTable = tEnv.from("user_behavior_kafka").select(
-      toTimestampLtz($("ts"), 3).as("ts"),
       $("userName").as("user_name"),
       $("page").as("page"),
+      $("ts").as("ts"),
       $("pn").as("pn")
     )
 

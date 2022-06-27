@@ -1,7 +1,5 @@
 package com.jtLiBrain.iceberg.flink
 
-import java.text.SimpleDateFormat
-
 import com.alibaba.fastjson.JSON
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.serialization.SimpleStringSchema
@@ -10,10 +8,10 @@ import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsIni
 import org.apache.flink.streaming.api.CheckpointingMode
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.table.api.{Schema, TableSchema}
-import org.apache.flink.table.data.{StringData, TimestampData}
-import org.apache.flink.table.types.logical.{RawType, TimestampType, VarCharType}
-import org.apache.flink.table.types.{AtomicDataType, DataType}
+import org.apache.flink.table.api.TableSchema
+import org.apache.flink.table.data.StringData
+import org.apache.flink.table.types.logical.{BigIntType, VarCharType}
+import org.apache.flink.table.types.AtomicDataType
 import org.apache.flink.types.Row
 import org.apache.hadoop.conf.Configuration
 import org.apache.iceberg.flink.TableLoader
@@ -29,8 +27,8 @@ object KafkaToIcebergScala {
 
     val source = KafkaSource.builder[String]
       .setBootstrapServers("localhost:9092")
-      .setTopics("iceber-events")
-      .setGroupId("my-group-2")
+      .setTopics("user_behavior")
+      .setGroupId("my-group-1")
       .setStartingOffsets(OffsetsInitializer.latest)
       .setValueOnlyDeserializer(new SimpleStringSchema)
       .build
@@ -40,29 +38,27 @@ object KafkaToIcebergScala {
     val output = input.map(s => {
         val jo = JSON.parseObject(s)
 
-        val ts = jo.getTimestamp("ts")
         val user = jo.getString("userName")
         val page = jo.getString("page")
-        val date = jo.getDate("ts")
+        val ts = jo.getLong("ts")
+        val pn = jo.getString("pn")
 
-        val sdf = new SimpleDateFormat("yyyy-MM-dd")
         Row.of(
-          TimestampData.fromTimestamp(ts),
           StringData.fromString(user),
           StringData.fromString(page),
-          StringData.fromString(sdf.format(date))
-        )
+          ts,
+          StringData.fromString(pn))
     })
 
     val tableLoader = TableLoader.fromHadoopTable(
-      "file:///Users/dream/Env/iceberg/flink_warehouse/iceberg_db/user_visit",
+      "file:///Users/dream/Env/iceberg/flink_warehouse/iceberg_db/user_behavior",
       new Configuration()
     )
 
     val tableSchema = TableSchema.builder()
-      .field("ts", new AtomicDataType(new TimestampType()))
       .field("user_name", new AtomicDataType(new VarCharType()))
       .field("page", new AtomicDataType(new VarCharType()))
+      .field("ts", new AtomicDataType(new BigIntType()))
       .field("pn", new AtomicDataType(new VarCharType()))
       .build()
 
